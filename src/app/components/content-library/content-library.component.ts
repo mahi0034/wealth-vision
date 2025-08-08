@@ -14,11 +14,13 @@ import {
 import { ShareContentModalComponent, ClientOption } from './share-content-modal.component';
 import { ContentFeedbackModalComponent } from './content-feedback-modal.component';
 import { ContentSummaryService } from '../../services/content-summary.service';
+import { ContentComparisonModalComponent, ComparisonContent } from './content-comparison-modal.component';
+
 
 @Component({
   selector: 'app-content-library',
   standalone: true,
-  imports: [CommonModule, FormsModule, ContentCardComponent, ContentSummaryModalComponent, ShareContentModalComponent, ContentFeedbackModalComponent ],
+  imports: [CommonModule, FormsModule, ContentComparisonModalComponent, ContentCardComponent, ContentSummaryModalComponent, ShareContentModalComponent, ContentFeedbackModalComponent ],
   template: `
     <div>
       <!-- Page Header -->
@@ -70,11 +72,13 @@ import { ContentSummaryService } from '../../services/content-summary.service';
             @if (selectedContent().length > 0) {
               <div class="flex items-center space-x-2 ml-4">
                 <span class="text-sm text-gray-600 font-medium">{{ selectedContent().length }} selected</span>
+                 @if (selectedContent().length == 2) {
                 <button 
-                  (click)="compareSelected()"
+                  (click)="openCompare(contentA, contentB)"
                   class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
                   📊 Compare
                 </button>
+                 }
                 <button 
                   (click)="openSummary()"
                   class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium">
@@ -87,6 +91,26 @@ import { ContentSummaryService } from '../../services/content-summary.service';
                 </button>
               </div>
             }
+
+             <!-- New Upload button and hidden file input -->
+            <div>
+              <button 
+                type="button"
+                class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium"
+                (click)="fileInput.click()">
+                <!-- <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M16 12l-4-4m0 0l-4 4m4-4v12" />
+                </svg> -->
+                <span>Upload File</span>
+              </button>
+              <input 
+                #fileInput
+                type="file" 
+                class="hidden" 
+                (change)="onFileSelected($event)" 
+                [attr.multiple]="allowMultiple ? '' : null"
+                />
+            </div>
 
             <button 
               (click)="toggleSelectAll()"
@@ -109,6 +133,18 @@ import { ContentSummaryService } from '../../services/content-summary.service';
         (close)="closeSummary()"
         (export)="exportSummary()">
       </app-content-summary-modal>
+
+      <!-- Place the modal at the root of the template: -->
+      <app-content-comparison-modal
+        [show]="showCompareModal"
+        [left]="compareContentLeft"
+        [right]="compareContentRight"
+        [commonThemes]="compareCommonThemes"
+        [uniquePerspectives]="compareUniquePerspectives"
+        [sentimentCounts]="compareSentimentCounts"
+        [recommendations]="compareRecommendations"
+        (close)="showCompareModal=false"
+      ></app-content-comparison-modal>
 
       <!-- Content Grid -->
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -158,11 +194,29 @@ import { ContentSummaryService } from '../../services/content-summary.service';
   `
 })
 export class ContentLibraryComponent implements OnInit, OnDestroy {
+  
   private destroy$ = new Subject<void>();
   private searchSubject = new Subject<string>();
   private contentService = inject(ContentService);
   private notificationService = inject(NotificationService);
   private summaryService = inject(ContentSummaryService);
+  contentA = {
+  id: '1',
+  title: 'Q4 2024 Market Outlook',
+  sentiment: 'positive',
+  createdAt: '2025-08-06T10:00:00Z',
+  tags: ['Market Analysis', 'Growth', 'Opportunity'],
+  description: 'Comprehensive analysis of trends and outlook for Q4 2024'
+};
+
+ contentB = {
+  id: '2',
+  title: 'Banking Sector Update',
+  sentiment: 'neutral',
+  createdAt: '2025-08-06T08:00:00Z',
+  tags: ['Banking', 'Regulatory'],
+  description: 'Latest banking sector regulatory developments and sector outlook'
+};
 
   content = signal<ContentItem[]>([]);
   filteredContent = signal<ContentItem[]>([]);
@@ -200,6 +254,86 @@ export class ContentLibraryComponent implements OnInit, OnDestroy {
     this.destroy$.next();
     this.destroy$.complete();
   }
+  showCompareModal = false;
+compareContentLeft: ComparisonContent = {
+  title: '',
+  sentiment: 'positive',
+  published: '',
+  tags: []
+};
+compareContentRight: ComparisonContent = {
+  title: '',
+  sentiment: 'neutral',
+  published: '',
+  tags: []
+};
+compareCommonThemes: string[] = [];
+compareUniquePerspectives: string[] = [];
+compareSentimentCounts = { positive: 0, neutral: 0, cautious: 0 };
+compareRecommendations = {
+  contentStrategy: '',
+  clientCommunication: '',
+  nextSteps: ''
+};
+
+allowMultiple = false; // Set true if you want to allow multiple files
+
+onFileSelected(event: Event) {
+  const input = event.target as HTMLInputElement;
+  if (!input.files || input.files.length === 0) return;
+
+  const files = Array.from(input.files);
+
+  // For demo, just log file names
+  console.log('Selected files:', files);
+
+  // TODO: Implement your upload logic here, e.g.:
+  // this.contentService.uploadFiles(files).subscribe(...)
+
+  // Optionally show notification on success or failure
+  this.notificationService.show(`${files.length} file(s) selected for upload`, 'info');
+
+  // Reset the input value to allow selecting the same file again if needed
+  input.value = '';
+}
+
+// Example method (trigger when user clicks "Compare" and passes two content items)
+openCompare(a: any, b: any) {
+  this.compareContentLeft = {
+    title: a.title,
+    sentiment: a.sentiment || 'positive',
+    published: this.getTimeAgo(new Date(a.createdAt)),
+    tags: a.tags || []
+  };
+  this.compareContentRight = {
+    title: b.title,
+    sentiment: b.sentiment || 'neutral',
+    published: this.getTimeAgo(new Date(b.createdAt)),
+    tags: b.tags || []
+  };
+  this.compareCommonThemes = [
+    'Market outlook and trends',
+    'Risk assessment and management',
+    'Investment opportunities'
+  ];
+  this.compareUniquePerspectives = [
+    `${a.title}: Quarterly market forecasting`,
+    `${b.title}: Sector-specific regulatory focus`
+  ];
+  this.compareSentimentCounts = {
+    positive: (a.sentiment === 'positive' ? 1 : 0) + (b.sentiment === 'positive' ? 1 : 0),
+    neutral: (a.sentiment === 'neutral' ? 1 : 0) + (b.sentiment === 'neutral' ? 1 : 0),
+    cautious: (a.sentiment === 'negative' ? 1 : 0) + (b.sentiment === 'negative' ? 1 : 0),
+  };
+  this.compareRecommendations = {
+    contentStrategy: 'Leverage optimistic outlook to discuss growth opportunities and portfolio expansion.',
+    clientCommunication: 'Use positive market insights to discuss portfolio optimization and new opportunities.',
+    nextSteps: 'Schedule follow-up meetings to discuss insights, update client portfolios based on analysis, and monitor market developments.'
+  };
+  this.showCompareModal = true;
+}
+
+  
   showSummaryModal = signal(false);
   executiveSummary = '';
   marketOpportunities: string[] = [];
@@ -230,6 +364,14 @@ export class ContentLibraryComponent implements OnInit, OnDestroy {
     }
     this.fetchSummary(selected);
   }
+
+  getTimeAgo(date: Date): string {
+  const now = new Date();
+  const diff = Math.floor((+now - +new Date(date)) / 1000 / 60); // minutes
+  if (diff < 60) return `${diff}m ago`;
+  if (diff < 24*60) return `${Math.floor(diff/60)}h ago`;
+  return `${Math.floor(diff/60/24)}d ago`;
+}
 
   private fetchSummary(contentIds: string[]) {
     this.summaryService.getSummary(contentIds, 'ADV-00004', true)

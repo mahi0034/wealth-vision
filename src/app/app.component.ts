@@ -4,7 +4,7 @@ import { RouterOutlet } from '@angular/router';
 import { HeaderComponent } from './components/header/header.component';
 import { NavigationComponent } from './components/navigation/navigation.component';
 import { NotificationComponent } from './components/shared/notification/notification.component';
-
+import { LoadingOverlayComponent } from './components/shared/loading-overlay.component';
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -13,10 +13,11 @@ import { NotificationComponent } from './components/shared/notification/notifica
     RouterOutlet,
     HeaderComponent,
     NavigationComponent,
-    NotificationComponent
+    NotificationComponent, LoadingOverlayComponent
   ],
   template: `
     <div class="bg-gray-50 min-h-screen">
+      <app-loading-overlay></app-loading-overlay>
       <app-header></app-header>
       <app-navigation></app-navigation>
 
@@ -25,9 +26,10 @@ import { NotificationComponent } from './components/shared/notification/notifica
       </main>
 
       <app-notification></app-notification>
+      
     </div>
   `
 })
 export class AppComponent {
-  title = 'WealthVision';
+  title = 'CIO Mosaic';
 }

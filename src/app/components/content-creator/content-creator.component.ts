@@ -4,6 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { ContentService } from '../../services/content.service';
 import { NotificationService } from '../../services/notification.service';
 import { CreateContentModalComponent } from './create-content-modal.component';
+import { PublishToPortalModalComponent, PublishContentOption  } from './publish-to-portal-modal.component';
+import { CreateEmailCampaignModalComponent, EmailContentOption } from './create-email-campaign-modal.component';
+import { ContentAnalyticsModalComponent } from './content-analytics-modal.component';
+
 
 interface AuthorStats {
   contentPublished: number;
@@ -54,7 +58,7 @@ interface AuthorComparison {
 @Component({
   selector: 'app-content-creator',
   standalone: true,
-  imports: [CommonModule, FormsModule,CreateContentModalComponent],
+  imports: [CommonModule, FormsModule,CreateContentModalComponent, PublishToPortalModalComponent, CreateEmailCampaignModalComponent, ContentAnalyticsModalComponent],
   template: `
     <div>
       <!-- Stats Cards -->
@@ -137,21 +141,21 @@ interface AuthorComparison {
 
           
           <button 
-            (click)="publishToPortal()"
+            (click)="openPublishToPortalModal()"
             class="flex items-center justify-center space-x-2 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors">
             <span>🌟</span>
             <span class="font-medium">Publish to Portal</span>
           </button>
 
           <button 
-            (click)="emailCampaign()"
+            (click)="openEmailCampaignModal()"
             class="flex items-center justify-center space-x-2 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors">
             <span>📩</span>
             <span class="font-medium">Email Campaign</span>
           </button>
 
           <button 
-            (click)="viewAnalytics()"
+            (click)="openAnalyticsModal()"
             class="flex items-center justify-center space-x-2 bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors">
             <span>📋</span>
             <span class="font-medium">View Analytics</span>
@@ -165,6 +169,25 @@ interface AuthorComparison {
             (contentCreated)="handleContentCreated($event)">
           </app-create-content-modal>
       <!-- Two Column Layout -->
+       <!-- Place modal at the end of your template -->
+          <app-publish-to-portal-modal
+            [show]="showPublishModal"
+            [contentOptions]="draftContentOptions"
+            (close)="closePublishToPortalModal()"
+            (portalPublish)="onPortalPublish($event)">
+          </app-publish-to-portal-modal>
+
+          <app-create-email-campaign-modal
+            [show]="showEmailCampaign"
+            [emailContents]="emailContentOptions"
+            (close)="closeEmailCampaignModal()"
+            (campaignSent)="onCampaignSent($event)">
+          </app-create-email-campaign-modal>
+
+          <app-content-analytics-modal
+            [show]="showAnalyticsModal"
+            (close)="closeAnalyticsModal()">
+          </app-content-analytics-modal>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         <!-- My Recent Content -->
         <div class="bg-white rounded-xl shadow-sm p-6">
@@ -399,8 +422,65 @@ export class ContentCreatorComponent implements OnInit {
     }
   ]);
 
+  showPublishModal = false;
+  draftContentOptions: PublishContentOption[] = [];
+
+  showEmailCampaign = false;
+  emailContentOptions: EmailContentOption[] = [];
+
+  showAnalyticsModal = false;
+
+  openAnalyticsModal() {
+    this.showAnalyticsModal = true;
+  }
+  closeAnalyticsModal() {
+    this.showAnalyticsModal = false;
+  }
+
   ngOnInit() {
     this.notificationService.show('Content Creator dashboard loaded', 'success');
+    // Populate your publish options from recent drafts, etc.
+    this.draftContentOptions = [
+      { id: '1', title: 'Q4 Market Outlook', createdAgo: '2 hours', selected: false },
+      { id: '2', title: 'Tech Sector Analysis', createdAgo: '1 day', selected: false },
+      { id: '3', title: 'Risk Management Update', createdAgo: '2 days', selected: false }];
+      // ...add more from backend as needed
+
+      // Populate with latest content, match what's shown in the image
+    this.emailContentOptions = [
+      { id: '1', title: 'Q4 Market Outlook', readers: 156, rating: 9.2, selected: false },
+      { id: '2', title: 'Tech Innovation Fund', readers: 89, rating: 8.4, selected: false },
+      { id: '3', title: 'Real Estate Opportunities', readers: 67, rating: 7.8, selected: false }
+    ];
+  }
+
+  openPublishToPortalModal() {
+    this.showPublishModal = true;
+  }
+
+  closePublishToPortalModal() {
+    this.showPublishModal = false;
+  }
+
+  openEmailCampaignModal() {
+    this.showEmailCampaign = true;
+  }
+  closeEmailCampaignModal() {
+    this.showEmailCampaign = false;
+  }
+  onCampaignSent(data: any) {
+    // Send to backend, show notification, etc.
+    this.notificationService.show('Email campaign sent!', 'success');
+  }
+
+  
+
+  onPortalPublish(data: any) {
+    // Here, trigger your backend API call for publishing
+    // data contains: content, targetPortals, publishDate, publishTime, options
+    // e.g. this.contentService.publishToPortal(data).subscribe();
+    // Show notification on success
+    this.notificationService.show('Content scheduled for portal publishing!', 'success');
   }
 
   openCreateModal() {

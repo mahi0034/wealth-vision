@@ -16,7 +16,7 @@ export class ContentService {
   private fetchContent() {
     const url =  'https://9v6vy5y0j2.execute-api.us-east-1.amazonaws.com/default/semantic_lambda_insights' ;
     const body = { "isBanker": true,
-  "top_k": 5,
+  "top_k": 500,
   "advisor_id": "ADV-00005" };
 
     this.http.post<any[]>(url, body).subscribe({
@@ -33,15 +33,15 @@ export class ContentService {
             ...(item.sectors_identified ? item.sectors_identified.split(',').map((t: string) => t.trim()) : []),
             ...(item.lobs_identified ? item.lobs_identified.split(',').map((t: string) => t.trim()) : [])
           ],
-          author: '', // Not available in API
+          author: item.author, // Not available in API
           icon: '',   // Not available in API
           theme: '',
           priority: 'normal',
           status: 'published',
           metrics: {
-            readers: 0,
-            rating: 0,
-            effectiveness: 0,
+            readers: item.content_viewed || 0,
+            rating: item.average_feedback_rating || 0,
+            effectiveness: item.score || 0,
             shares: 0,
             comments: 0,
             readTime: '',
