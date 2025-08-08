@@ -31,5 +31,5 @@ import { LoadingOverlayComponent } from './components/shared/loading-overlay.com
   `
 })
 export class AppComponent {
-  title = 'CIO Mosaic';
+  title = 'Content Mosaic';
 }

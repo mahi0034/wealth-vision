@@ -16,7 +16,7 @@ import { Subscription, filter } from 'rxjs';
               <span class="text-2xl">📊</span>
             </div>
             <div>
-              <h1 class="text-3xl font-bold">CIO  Mosaic</h1>
+              <h1 class="text-3xl font-bold">Content Mosaic</h1>
               <p class="text-blue-100 text-sm">Content & Client Insights Platform</p>
             </div>
           </div>

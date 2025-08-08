@@ -15,7 +15,7 @@ import { DashboardStats, TopContent, RecentActivity } from '../../models/content
       <!-- Page Title -->
       <div class="mb-8">
         <h1 class="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p class="text-gray-600">Welcome to your WealthVision command center</p>
+        <p class="text-gray-600">Welcome to your Content Mosaic command center</p>
       </div>
 
       <!-- Quick Stats -->
