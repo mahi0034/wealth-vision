@@ -480,7 +480,7 @@ openCompare(a: any, b: any) {
       payload.related_content.push(obj)
     });
     this.contentService.contentFeedbackSubmission(payload).subscribe(res=>{
-      console.log(res);
+      this.contentService.fetchContent();
     })
   }
    showFeedback() {

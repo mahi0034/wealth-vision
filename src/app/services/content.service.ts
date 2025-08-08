@@ -13,7 +13,7 @@ export class ContentService {
     this.fetchContent();
   }
 
-  private fetchContent() {
+  public fetchContent() {
     const url =  'https://9v6vy5y0j2.execute-api.us-east-1.amazonaws.com/default/semantic_lambda_insights' ;
     const body = { "isBanker": true,
   "top_k": 500,
