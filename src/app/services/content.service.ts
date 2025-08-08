@@ -14,7 +14,7 @@ export class ContentService {
   }
 
   public fetchContent() {
-    const url =  'https://9v6vy5y0j2.execute-api.us-east-1.amazonaws.com/default/semantic_lambda_insights' ;
+    const url =  'https://i7unr6ba02.execute-api.us-east-1.amazonaws.com/default/semantic_lambda_insights' ;
     const body = { "isBanker": true,
   "top_k": 500,
   "advisor_id": "ADV-00005" };
