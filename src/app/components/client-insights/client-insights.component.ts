@@ -4,11 +4,14 @@ import { FormsModule } from '@angular/forms';
 import { ClientService } from '../../services/client.service';
 import { NotificationService } from '../../services/notification.service';
 import { ClientProfile } from '../../models/client.model';
+import { ContentItem } from 'src/app/models/content.model';
+import { ContentFeedbackModalComponent } from '../content-library/content-feedback-modal.component';
+import { ContentService } from 'src/app/services/content.service';
 
 @Component({
   selector: 'app-client-insights',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ContentFeedbackModalComponent, FormsModule],
   template: `
     <div>
       <!-- Page Header -->
@@ -19,9 +22,10 @@ import { ClientProfile } from '../../models/client.model';
             [(ngModel)]="selectedClientId"
             (ngModelChange)="onClientChange()"
             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-            @for (client of clients(); track client.id) {
-              <option [value]="client.id">
-                {{ client.name }} (Age {{ client.age }}, {{ client.riskProfile | titlecase }})
+            @for (client of clients(); track client.client_id) {
+              <option [value]="client.client_id">
+                {{ client.full_name }}
+                 <!-- (Age {{ client.age }}, {{ client.risk_profile | titlecase }}, {{client.portfolio_value}}) -->
               </option>
             }
           </select>
@@ -36,7 +40,7 @@ import { ClientProfile } from '../../models/client.model';
               <div class="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
                 <span class="text-white text-lg">👤</span>
               </div>
-              <h2 class="text-lg font-semibold text-gray-900">Client Profile: {{ selectedClient()?.name }}</h2>
+              <h2 class="text-lg font-semibold text-gray-900">Client Profile: {{ selectedClient()?.full_name }}</h2>
             </div>
 
             <div class="space-y-4">
@@ -49,21 +53,23 @@ import { ClientProfile } from '../../models/client.model';
                 <span class="text-gray-600">Risk Profile:</span>
                 <span 
                   class="px-3 py-1 rounded-full text-sm font-medium"
-                  [ngClass]="getRiskProfileClass(selectedClient()?.riskProfile || '')">
-                  {{ selectedClient()?.riskProfile | titlecase }}
+                  [ngClass]="getRiskProfileClass(selectedClient()?.risk_profile || '')">
+                  {{ selectedClient()?.risk_profile | titlecase }}
                 </span>
               </div>
 
               <div class="flex justify-between items-center">
                 <span class="text-gray-600">Portfolio Value:</span>
                 <span class="text-lg font-semibold text-gray-900">
-                  {{ formatCurrency(selectedClient()?.portfolioValue || 0) }}
+                  {{ formatCurrency(selectedClient()?.portfolio_value || 0) }}
                 </span>
               </div>
 
               <div class="flex justify-between items-center">
                 <span class="text-gray-600">Investment Goal:</span>
-                <span class="text-gray-900 font-medium">{{ selectedClient()?.investmentGoal }}</span>
+                <span class="text-gray-900 font-medium">
+                  {{getFormattedInvestmentGolas(selectedClient()?.investment_objectives)}}
+                </span>
               </div>
             </div>
           </div>
@@ -94,7 +100,7 @@ import { ClientProfile } from '../../models/client.model';
 
             <!-- Legend -->
             <div class="grid grid-cols-2 gap-3">
-              @for (allocation of selectedClient()?.portfolioAllocation || []; track allocation.category) {
+              @for (allocation of selectedClient()?.portfolio?.allocations || []; track allocation.category) {
                 <div class="flex items-center space-x-2">
                   <div 
                     class="w-3 h-3 rounded-full"
@@ -119,7 +125,7 @@ import { ClientProfile } from '../../models/client.model';
             </div>
 
             <div class="space-y-3">
-              @for (opportunity of selectedClient()?.opportunities || []; track opportunity) {
+              @for (opportunity of opportunities || []; track opportunity) {
                 <div class="flex items-center space-x-2">
                   <div class="w-2 h-2 bg-green-500 rounded-full"></div>
                   <span class="text-gray-700 text-sm">{{ opportunity }}</span>
@@ -138,7 +144,7 @@ import { ClientProfile } from '../../models/client.model';
             </div>
 
             <div class="space-y-3">
-              @for (risk of selectedClient()?.risks || []; track risk) {
+              @for (risk of risks || []; track risk) {
                 <div class="flex items-center space-x-2">
                   <div class="w-2 h-2 bg-yellow-500 rounded-full"></div>
                   <span class="text-gray-700 text-sm">{{ risk }}</span>
@@ -154,10 +160,16 @@ import { ClientProfile } from '../../models/client.model';
                 <span class="text-blue-600 text-sm">💡</span>
               </div>
               <h3 class="text-lg font-semibold text-gray-900">Recommendations</h3>
+              <button 
+                (click)="openFeedback()"
+                class="text-purple-600 hover:text-purple-800 text-sm font-medium flex items-center space-x-1 transition-colors">
+                <span>📝</span>
+                <span>Feedback</span>
+              </button>
             </div>
 
             <div class="space-y-3">
-              @for (recommendation of selectedClient()?.recommendations || []; track recommendation) {
+              @for (recommendation of recommendations || []; track recommendation) {
                 <div class="flex items-center space-x-2">
                   <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
                   <span class="text-gray-700 text-sm">{{ recommendation }}</span>
@@ -168,43 +180,76 @@ import { ClientProfile } from '../../models/client.model';
         </div>
       }
     </div>
+
+    <app-content-feedback-modal
+        [show]="showFeedback()"
+        (close)="closeFeedback()"
+        (feedbackSubmitted)="onFeedbackSubmitted($event)"
+      ></app-content-feedback-modal>
   `
 })
 export class ClientInsightsComponent implements OnInit {
+  private contentService = inject(ContentService);
   private clientService = inject(ClientService);
   private notificationService = inject(NotificationService);
 
   clients = signal<ClientProfile[]>([]);
   selectedClient = signal<ClientProfile | null>(null);
   selectedClientId = '';
+  opportunities:any = [];
+  risks:any = [];
+  recommendations:any = [];
+  client_id_list:any =[];
+  colors:any = ['#800080','#000080', '#008080','#FF0000', '#808080']
 
   ngOnInit() {
     this.loadClients();
   }
 
+  getRandomColor(): string {
+    const letters = '0123456789ABCDEF';
+    let color = '#';
+    for (let i = 0; i < 6; i++) {
+      color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
+  }
+
   loadClients() {
-    this.clientService.getClients().subscribe(clients => {
-      this.clients.set(clients);
-      if (clients.length > 0) {
-        // Select Robert Williams by default as shown in the image
-        const robert = clients.find(c => c.name === 'Robert Williams');
-        if (robert) {
-          this.selectedClientId = robert.id;
-          this.selectedClient.set(robert);
-        } else {
-          this.selectedClientId = clients[0].id;
-          this.selectedClient.set(clients[0]);
-        }
+    let req={
+      banker_id:["ADV-00004"]
+    }
+    this.clientService.getClients(req).subscribe(clients => {
+      this.clients.set(clients.body);
+      let clientsData :any= clients.body;
+      clientsData?.forEach((client:any) => {
+          client?.portfolio?.allocations.forEach((element:any) => {
+          element.color = this.getRandomColor();
+        });
+      });
+      if (clientsData.length > 0) {
+        this.selectedClientId = clientsData[0].client_id;
+        this.selectedClient.set(clientsData[0]);
+        this.onClientChange();
       }
     });
   }
 
   onClientChange() {
-    const client = this.clients().find(c => c.id === this.selectedClientId);
+    const client = this.clients()?.find(c => c.client_id === this.selectedClientId);
     if (client) {
       this.selectedClient.set(client);
-      this.notificationService.show(`Switched to ${client.name}`, 'info');
+      this.notificationService.show(`Switched to ${client.full_name}`, 'info');
     }
+    let reqObj = {
+      "clientIds":[this.selectedClientId]
+    }
+    this.clientService.getClientDeails(reqObj).subscribe(data => {
+      this.opportunities = data?.body?.insights?.relevant_opportunities;
+      this.risks = data?.body?.insights?.risk_considerations;
+      this.recommendations = data?.body?.insights?.recommendations;
+      this.client_id_list = data?.body?.client_id_list;
+    })    
   }
 
   getRiskProfileClass(riskProfile: string): string {
@@ -228,10 +273,12 @@ export class ClientInsightsComponent implements OnInit {
       maximumFractionDigits: 1
     }).format(value);
   }
-
+  getFormattedInvestmentGolas(goals:any){
+    return goals?.join(",");
+  }
   getChartSegments() {
     const client = this.selectedClient();
-    if (!client?.portfolioAllocation) return [];
+    if (!client?.portfolio?.allocations) return [];
 
     let currentAngle = 0;
     const centerX = 100;
@@ -239,8 +286,8 @@ export class ClientInsightsComponent implements OnInit {
     const radius = 80;
     const innerRadius = 50;
 
-    return client.portfolioAllocation.map(allocation => {
-      const percentage = allocation.percentage;
+    return client.portfolio?.allocations.map(allocation => {
+      const percentage = allocation.value;
       const angle = (percentage / 100) * 360;
       const startAngle = currentAngle;
       const endAngle = currentAngle + angle;
@@ -276,8 +323,37 @@ export class ClientInsightsComponent implements OnInit {
         category: allocation.category,
         path: path,
         color: allocation.color,
-        percentage: allocation.percentage
+        percentage: allocation.value
       };
     });
+  }
+
+   // Feedback modal state
+  showFeedbackModal = signal(false);
+  
+  showFeedback() {
+    return this.showFeedbackModal();
+  }
+   // Feedback handlers
+  openFeedback() {
+    this.showFeedbackModal.set(true);
+  }
+  closeFeedback() {
+    this.showFeedbackModal.set(false);
+  }
+
+  onFeedbackSubmitted(payload: any) {
+    this.notificationService.show('Feedback submitted!', 'success');
+    payload.related_content = [];
+    this.client_id_list?.forEach((element:any) => {
+      let obj={
+        id:element,
+        title:null
+      }
+      payload.related_content.push(obj)
+    });
+    this.contentService.contentFeedbackSubmission(payload).subscribe(res=>{
+      console.log(res);
+    })
   }
 }
