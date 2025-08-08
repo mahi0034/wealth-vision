@@ -1,15 +1,19 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { StatsCardComponent } from '../shared/stats-card/stats-card.component';
 import { ContentService } from '../../services/content.service';
 //import { ClientService } from '../../services/client.service';
 import { NotificationService } from '../../services/notification.service';
 import { DashboardStats, TopContent, RecentActivity } from '../../models/content.model';
+import { CamelCasePipe } from 'src/app/pipes/camel-case.pipe';
+import { ContentSummaryService } from 'src/app/services/content-summary.service';
+import { Subject, takeUntil } from 'rxjs';
+import { ContentSummaryModalComponent, PreferenceItem, SummaryDocument } from '../content-library/content-summary-modal.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, StatsCardComponent],
+  imports: [CommonModule, StatsCardComponent, CamelCasePipe, ContentSummaryModalComponent],
   template: `
     <div>
       <!-- Page Title -->
@@ -22,23 +26,23 @@ import { DashboardStats, TopContent, RecentActivity } from '../../models/content
       <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <app-stats-card
           title="Total Content"
-          [value]="stats?.totalContent || 0"
+          [value]="stats?.total_content || 0"
           icon="📚"
-          trend="+12 this week"
+          trend="{{stats?.content_added_this_week}} this week"
           trendType="positive">
         </app-stats-card>
         
         <app-stats-card
           title="Active Clients"
-          [value]="stats?.activeClients || 0"
+          [value]="stats?.active_clients || 0"
           icon="👥"
-          trend="+3 new clients"
+          trend="{{stats?.new_clients_this_week}} new clients"
           trendType="positive">
         </app-stats-card>
         
         <app-stats-card
           title="Insights Generated"
-          [value]="stats?.insightsGenerated || 0"
+          [value]="stats?.insights_generated || 0"
           icon="💡"
           trend="+8 today"
           trendType="positive">
@@ -48,7 +52,7 @@ import { DashboardStats, TopContent, RecentActivity } from '../../models/content
           title="Avg Sentiment"
           [value]="getFormattedSentiment()"
           icon="📊"
-          trend="Optimistic"
+          trend={{getTrend(stats?.avg_sentiment)}}  
           trendType="positive">
         </app-stats-card>
       </div>
@@ -103,15 +107,16 @@ import { DashboardStats, TopContent, RecentActivity } from '../../models/content
                   <div>
                     <p class="font-medium text-gray-900">{{ content.title }}</p>
                     <p class="text-sm text-gray-600">
-                      {{ content.clientActions }} client actions • {{ content.positiveFeedback }}% positive feedback
+                      <span style="font-size: 18px;">👁</span> {{ content.content_viewed }} • Sentiment: {{ getTrend(content.sentiment_score) }}
                     </p>
                   </div>
                 </div>
                 <div class="text-right">
-                  <div class="text-2xl font-bold" [ngClass]="getEffectivenessColor(content.effectiveness)">
-                    {{ content.effectiveness }}
+                  <div class="text-2xl font-bold" class="font-bold text-green-600 text-lg min-w-[3rem] text-right">
+                  <!--[ngClass]="getEffectivenessColor(content.effectiveness)"> -->
+                    {{ content.positive_feedback_pct }}%
                   </div>
-                  <div class="text-xs text-gray-500">Effectiveness</div>
+                  <div class="text-xs text-green-600">Optimistic</div>
                 </div>
               </div>
             }
@@ -194,19 +199,25 @@ import { DashboardStats, TopContent, RecentActivity } from '../../models/content
             <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
               <div class="flex items-center space-x-4">
                 <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <span class="text-lg">{{ activity.icon }}</span>
+                  <span class="text-lg">📈</span>
                 </div>
                 <div class="flex-1">
                   <p class="font-medium text-gray-900">{{ activity.title }}</p>
-                  <p class="text-sm text-gray-600">{{ activity.author }} • {{ activity.timeAgo }}</p>
+                  <p class="text-sm text-gray-600">{{ activity.author | camelCase}} • {{ formatTimeAgo(activity.created_at)}}</p>
                 </div>
               </div>
               <div class="flex items-center space-x-3">
-                <span 
+               <!-- <span 
                   class="text-white text-xs px-3 py-1 rounded-full font-medium"
                   [ngClass]="getSentimentClass(activity.sentiment)">
                   {{ getSentimentLabel(activity.sentiment) }}
-                </span>
+                </span>-->
+                <button 
+                  (click)="detailsEmit(activity.content_id)"
+                  class="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center space-x-1 transition-colors">
+                  <span>👁️</span>
+                  <span>Details</span>
+                </button>
               </div>
             </div>
           }
@@ -244,70 +255,94 @@ import { DashboardStats, TopContent, RecentActivity } from '../../models/content
         </div>
       </div> -->
     </div>
+    <app-content-summary-modal
+        [show]="showSummaryModal()"
+        [executiveSummary]="executiveSummary"
+        [marketOpportunities]="marketOpportunities"
+        [riskFactors]="riskFactors"
+        [documents]="documents"
+        [recommendedActions]="recommendedActions"
+        [showPreferenceImpact]="showPreferenceImpact"
+        [themes]="themes"
+        [assetClasses]="assetClasses"
+        (close)="closeSummary()"
+        (export)="exportSummary()">
+      </app-content-summary-modal>
   `
 })
 export class DashboardComponent implements OnInit {
   private contentService = inject(ContentService);
   private notificationService = inject(NotificationService);
+  private summaryService = inject(ContentSummaryService);
   //private ClientService = inject(ClientService);
+  private destroy$ = new Subject<void>();
   
 
   stats: DashboardStats | null = null;
+  showSummaryModal = signal(false);
+  executiveSummary = '';
+  marketOpportunities: string[] = [];
+  riskFactors: string[] = [];
+  documents: SummaryDocument[] = [];
+  recommendedActions: string[] = [];
+  showPreferenceImpact = false;
+  themes: PreferenceItem[] = [];
+  assetClasses: PreferenceItem[] = [];
   
-  topContent: TopContent[] = [
-    {
-      id: 'q4-outlook',
-      title: 'Q4 Market Outlook',
-      icon: '📈',
-      clientActions: 12,
-      positiveFeedback: 89,
-      effectiveness: 9.2
-    },
-    {
-      id: 'tech-fund', 
-      title: 'Tech Innovation Fund',
-      icon: '💻',
-      clientActions: 8,
-      positiveFeedback: 75,
-      effectiveness: 8.4
-    },
-    {
-      id: 'real-estate',
-      title: 'Real Estate Opportunities', 
-      icon: '🏠',
-      clientActions: 5,
-      positiveFeedback: 80,
-      effectiveness: 7.8
-    }
-  ];
+  topContent: TopContent[] = [];
+  //   {
+  //     id: 'q4-outlook',
+  //     title: 'Q4 Market Outlook',
+  //     icon: '📈',
+  //     clientActions: 12,
+  //     positiveFeedback: 89,
+  //     effectiveness: 9.2
+  //   },
+  //   {
+  //     id: 'tech-fund', 
+  //     title: 'Tech Innovation Fund',
+  //     icon: '💻',
+  //     clientActions: 8,
+  //     positiveFeedback: 75,
+  //     effectiveness: 8.4
+  //   },
+  //   {
+  //     id: 'real-estate',
+  //     title: 'Real Estate Opportunities', 
+  //     icon: '🏠',
+  //     clientActions: 5,
+  //     positiveFeedback: 80,
+  //     effectiveness: 7.8
+  //   }
+  // ];
 
   // Recent Activity data matching the image
-  recentActivity: RecentActivity[] = [
-    {
-      id: '1',
-      title: 'Q4 Market Outlook',
-      author: 'Chief Investment Office',
-      timeAgo: '2 hours ago',
-      icon: '📈',
-      sentiment: 'positive'
-    },
-    {
-      id: '2',
-      title: 'Tech Sector Analysis',
-      author: 'Product Team',
-      timeAgo: '4 hours ago',
-      icon: '📊',
-      sentiment: 'neutral'
-    },
-    {
-      id: '3',
-      title: 'Inflation Concerns',
-      author: 'Economic Research',
-      timeAgo: '6 hours ago',
-      icon: '⚠️',
-      sentiment: 'negative'
-    }
-  ];
+  recentActivity: RecentActivity[] = []
+  //   {
+  //     id: '1',
+  //     title: 'Q4 Market Outlook',
+  //     author: 'Chief Investment Office',
+  //     timeAgo: '2 hours ago',
+  //     icon: '📈',
+  //     sentiment: 'positive'
+  //   },
+  //   {
+  //     id: '2',
+  //     title: 'Tech Sector Analysis',
+  //     author: 'Product Team',
+  //     timeAgo: '4 hours ago',
+  //     icon: '📊',
+  //     sentiment: 'neutral'
+  //   },
+  //   {
+  //     id: '3',
+  //     title: 'Inflation Concerns',
+  //     author: 'Economic Research',
+  //     timeAgo: '6 hours ago',
+  //     icon: '⚠️',
+  //     sentiment: 'negative'
+  //   }
+  // ];
 
   ngOnInit() {
     this.loadDashboardData();
@@ -318,17 +353,34 @@ export class DashboardComponent implements OnInit {
   }
 
   loadDashboardData() {
-    this.contentService.getStats().subscribe(stats => {
-      this.stats = stats;
+    this.contentService.getStats().subscribe(res => {
+      this.stats = res.stats;
+      this.topContent = res?.top_content_by_feedback;
+      this.recentActivity = res?.recent_content;
     });
   }
 
   // FIXED: This method properly handles the null value and formatting
   getFormattedSentiment(): string {
-    if (!this.stats || this.stats.avgSentiment == null) {
+    if (!this.stats || this.stats.avg_sentiment == null) {
       return '0.0';
     }
-    return this.stats.avgSentiment.toFixed(1);
+    return this.stats.avg_sentiment.toFixed(1);
+  }
+  getTrend(score:any){
+    if(score== 'None'){
+        return "unknown"
+    } else if(score <= '-6'){
+        return  "Very Negative"
+    } else if(score <= -2){
+        return "Negative"
+    } else if(score <= 2){
+        return "Neutral"
+    } else if(score <= 6){
+        return "Positive"
+    } else{
+        return "Very Positive"
+    }
   }
 
   getEffectivenessColor(effectiveness: number): string {
@@ -373,5 +425,107 @@ export class DashboardComponent implements OnInit {
 
   viewContent(title: string) {
     this.notificationService.show(`📖 Opening: ${title}`, 'info');
+  }
+
+  daysBefore(dateString:string) {
+      // Parse the input date string into a Date object
+      const givenDate:any = new Date(dateString);
+      
+      // Get the current date
+      const currentDate:any = new Date();
+      
+      // Set time to midnight for accurate day comparison
+      givenDate.setHours(0, 0, 0, 0);
+      currentDate.setHours(0, 0, 0, 0);
+      
+      // Calculate the difference in time (in milliseconds)
+      const timeDiff = currentDate - givenDate;
+      
+      // Convert time difference to days
+      const daysDiff = timeDiff / (1000 * 3600 * 24);
+      
+      // Return the number of days, rounded to the nearest integer
+      return Math.floor(daysDiff);
+  }
+
+   // Utility
+  formatTimeAgo(isoDate: string): string {
+    const date = new Date(isoDate);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return '1 day ago';
+    if (diffDays < 30) return `${diffDays} days ago`;
+    
+    const diffMonths = Math.floor(diffDays / 30);
+    if (diffMonths === 1) return '1 month ago';
+    return `${diffMonths} months ago`;
+  }
+
+  closeSummary() {
+    this.showSummaryModal.set(false);
+  }
+
+  exportSummary() {
+    // Export logic or download PDF
+    this.notificationService.show('Summary exported!', 'success');
+    this.closeSummary();
+  }
+
+  detailsEmit(contentId:string){
+    this.summaryService.getSummary([contentId], 'ADV-00004', true)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          this.populateSummaryData(response);
+          this.showSummaryModal.set(true);
+        },
+        error: (error) => {
+          console.error('Summary API Error:', error);
+          this.notificationService.show('Failed to fetch content summary', 'error');
+        }
+      });
+  }
+  private populateSummaryData(response: any) {
+    this.executiveSummary = response.executive_summary;
+    this.marketOpportunities = response.key_insights.market_opportunities;
+    this.riskFactors = response.key_insights.risk_factors;
+    
+    // Map content breakdown
+    this.documents = response.content_breakdown.map((item: any) => ({
+      sentiment: item.sentiment,
+      title: item.title,
+      timeAgo: this.formatTimeAgo(item.updated_at),
+      relevanceScore: item.relevance_score,
+      keyPoints: item.key_points,
+      preferenceAlignment: item.preference_alignment
+    }));
+    
+    this.recommendedActions = response.recommended_actions;
+    
+    // Map preference impact
+    if (response.preference_impact) {
+      this.showPreferenceImpact = true;
+      this.themes = response.preference_impact.themes?.map((theme: any) => ({
+        name: theme.name,
+        summary: theme.summary,
+        confidence: theme.confidence,
+        sentiment: theme.sentiment,
+        highlights: theme.highlights,
+        preferenceStatus: theme.preference_status,
+        advisorAlignment: theme.advisor_alignment
+      })) || [];
+      
+      this.assetClasses = response.preference_impact.asset_classes?.map((asset: any) => ({
+        name: asset.name,
+        summary: asset.summary,
+        confidence: asset.confidence,
+        sentiment: asset.sentiment,
+        highlights: asset.highlights,
+        preferenceStatus: asset.preference_status,
+        advisorAlignment: asset.advisor_alignment
+      })) || [];
+    }
   }
 }

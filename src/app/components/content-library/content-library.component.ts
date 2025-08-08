@@ -68,7 +68,7 @@ import { ContentComparisonModalComponent, ComparisonContent } from './content-co
               <option value="week">This Week</option>
               <option value="month">This Month</option>
             </select>
-
+           
             @if (selectedContent().length > 0) {
               <div class="flex items-center space-x-2 ml-4">
                 <span class="text-sm text-gray-600 font-medium">{{ selectedContent().length }} selected</span>
@@ -79,11 +79,11 @@ import { ContentComparisonModalComponent, ComparisonContent } from './content-co
                   📊 Compare
                 </button>
                  }
-                <button 
+               <!-- <button 
                   (click)="openSummary()"
                   class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium">
                   📝 Summarize
-                </button>
+                </button> -->
                 <button 
                   (click)="clearSelection()"
                   class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm font-medium">
@@ -91,7 +91,11 @@ import { ContentComparisonModalComponent, ComparisonContent } from './content-co
                 </button>
               </div>
             }
-
+            <button 
+              (click)="openSummary()"
+              class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium">
+              📝 Summarize
+            </button>
              <!-- New Upload button and hidden file input -->
             <div>
               <button 
