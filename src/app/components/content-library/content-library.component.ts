@@ -200,6 +200,7 @@ export class ContentLibraryComponent implements OnInit, OnDestroy {
   private contentService = inject(ContentService);
   private notificationService = inject(NotificationService);
   private summaryService = inject(ContentSummaryService);
+  private contentIdFeedback = '0' ;
   contentA = {
   id: '1',
   title: 'Q4 2024 Market Outlook',
@@ -465,6 +466,8 @@ openCompare(a: any, b: any) {
   // Feedback handlers
   openFeedback(item: ContentItem) {
     this.showFeedbackModal.set(true);
+    this.contentIdFeedback = item.id;
+
   }
   closeFeedback() {
     this.showFeedbackModal.set(false);
@@ -472,13 +475,19 @@ openCompare(a: any, b: any) {
   onFeedbackSubmitted(payload: any) {
     this.notificationService.show('Feedback submitted!', 'success');
     payload.related_content = [];
-    this.selectedContent().forEach((element:any) => {
-      let obj={
-        id:element,
+    let obj={
+        id:this.contentIdFeedback,
         title:null
       }
       payload.related_content.push(obj)
-    });
+      this.contentIdFeedback = '0';
+    // this.selectedContent().forEach((element:any) => {
+    //   let obj={
+    //     id:element,
+    //     title:null
+    //   }
+    //   payload.related_content.push(obj)
+    // });
     this.contentService.contentFeedbackSubmission(payload).subscribe(res=>{
       this.contentService.fetchContent();
     })
