@@ -1,11 +1,13 @@
 export interface ClientProfile {
-  id: string;
-  name: string;
+  client_id: string;
+  full_name: string;
   age: number;
-  riskProfile: 'conservative' | 'moderate' | 'aggressive';
-  portfolioValue: number;
-  investmentGoal: string;
-  portfolioAllocation: PortfolioAllocation[];
+  risk_profile: 'conservative' | 'moderate' | 'aggressive';
+  portfolio_value: number;
+  investment_objectives: string[];
+  portfolio:{
+    allocations: PortfolioAllocation[];
+  }
   opportunities: string[];
   risks: string[];
   recommendations: string[];
@@ -13,6 +15,6 @@ export interface ClientProfile {
 
 export interface PortfolioAllocation {
   category: string;
-  percentage: number;
+  value: number;
   color: string;
 }

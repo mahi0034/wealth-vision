@@ -94,4 +94,9 @@ export class ContentService {
       map(content => content.filter(item => ids.includes(item.id)))
     );
   }
+
+  contentFeedbackSubmission(req:any): Observable<any>{
+    let url = 'https://axm9uvlxr7.execute-api.us-east-1.amazonaws.com/prod/feedback';
+    return this.http.post(url,req);
+  }
 }
