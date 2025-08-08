@@ -200,7 +200,7 @@ export class ClientInsightsComponent implements OnInit {
   risks:any = [];
   recommendations:any = [];
   client_id_list:any =[];
-  colors:any = ['#800080','#000080', '#008080','#FF0000', '#808080']
+  insights:any;
 
   ngOnInit() {
     this.loadClients();
@@ -245,6 +245,7 @@ export class ClientInsightsComponent implements OnInit {
       "clientIds":[this.selectedClientId]
     }
     this.clientService.getClientDeails(reqObj).subscribe(data => {
+      this.insights = data?.body?.insights;
       this.opportunities = data?.body?.insights?.relevant_opportunities;
       this.risks = data?.body?.insights?.risk_considerations;
       this.recommendations = data?.body?.insights?.recommendations;
@@ -352,6 +353,7 @@ export class ClientInsightsComponent implements OnInit {
       }
       payload.related_content.push(obj)
     });
+    payload.insights = this.insights;
     this.contentService.contentFeedbackSubmission(payload).subscribe(res=>{
       console.log(res);
     })
