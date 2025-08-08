@@ -136,11 +136,14 @@ export class ContentFeedbackModalComponent {
 
   submit() {
     const payload = {
+      action: "submit_feedback",
+      advisor_id: "ADV-00004",
       rating: this.rating,
-      aspects: Object.keys(this.aspects).filter(k => (this.aspects as any)[k]),
+      selected_aspects: Object.keys(this.aspects).filter(k => (this.aspects as any)[k]),
       comments: this.comments,
-      usefulness: this.usefulness,
-      source: this.source
+      usefulness_level: this.usefulness,
+      feedback_source: this.source,
+      additional_comments:this.comments
     };
     this.feedbackSubmitted.emit(payload);
     this.close.emit();

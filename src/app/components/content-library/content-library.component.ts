@@ -470,8 +470,18 @@ openCompare(a: any, b: any) {
     this.showFeedbackModal.set(false);
   }
   onFeedbackSubmitted(payload: any) {
-    console.log('Feedback:', payload);
     this.notificationService.show('Feedback submitted!', 'success');
+    payload.related_content = [];
+    this.selectedContent().forEach((element:any) => {
+      let obj={
+        id:element,
+        title:null
+      }
+      payload.related_content.push(obj)
+    });
+    this.contentService.contentFeedbackSubmission(payload).subscribe(res=>{
+      console.log(res);
+    })
   }
    showFeedback() {
     return this.showFeedbackModal();
