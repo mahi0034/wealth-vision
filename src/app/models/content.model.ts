@@ -26,10 +26,12 @@ export interface ContentMetrics {
 }
 
 export interface DashboardStats {
-  totalContent: number;
-  activeClients: number;
-  insightsGenerated: number;
-  avgSentiment: number;
+  total_content: number;
+  active_clients: number;
+  insights_generated: number;
+  avg_sentiment: number;
+  content_added_this_week: number;
+  new_clients_this_week: number
 }
 
 export interface TopContent {
@@ -39,6 +41,9 @@ export interface TopContent {
   clientActions: number;
   positiveFeedback: number;
   effectiveness: number;
+  content_viewed: number;
+  positive_feedback_pct: number;
+  sentiment_score:number
 }
 
 export interface RecentActivity {
@@ -48,4 +53,6 @@ export interface RecentActivity {
   timeAgo: string;
   icon: string;
   sentiment: string;
+  created_at:string;
+  content_id:string;
 }

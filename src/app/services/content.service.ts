@@ -14,7 +14,7 @@ export class ContentService {
   }
 
   public fetchContent() {
-    const url =  'https://i7unr6ba02.execute-api.us-east-1.amazonaws.com/default/semantic_lambda_insights' ;
+    const url =  'https://jwhvbcxh2iink7qpzxn3yymhhm0lxjgp.lambda-url.us-east-1.on.aws' ;
     const body = { "isBanker": true,
   "top_k": 500,
   "advisor_id": "ADV-00005" };
@@ -25,7 +25,7 @@ export class ContentService {
           id: String(item.content_id),
           title: item.title,
           description: item.summary,
-          sentiment: 'neutral', // No sentiment in API, default to 'neutral'
+          sentiment: item.sentiment_label, // No sentiment in API, default to 'neutral'
           time: this.getHoursAgo(item.created_at),
           tags: [
             ...(item.themes_identified ? item.themes_identified.split(',').map((t: string) => t.trim()) : []),
@@ -73,20 +73,22 @@ export class ContentService {
     );
   }
 
-  getStats(): Observable<DashboardStats> {
-    const content = this.contentSubject.value;
-    const avgRating = content.length > 0 ?
-      content.reduce((sum, item) => sum + (item.metrics?.rating || 0), 0) / content.length : 0;
+  getStats(): Observable<any> {
+    // const content = this.contentSubject.value;
+    // const avgRating = content.length > 0 ?
+    //   content.reduce((sum, item) => sum + (item.metrics?.rating || 0), 0) / content.length : 0;
 
-    return new Observable<DashboardStats>(observer => {
-      observer.next({
-        totalContent: content.length,
-        activeClients: 89,
-        insightsGenerated: 156,
-        avgSentiment: avgRating
-      });
-      observer.complete();
-    });
+    // return new Observable<DashboardStats>(observer => {
+    //   observer.next({
+    //     totalContent: content.length,
+    //     activeClients: 89,
+    //     insightsGenerated: 156,
+    //     avgSentiment: avgRating
+    //   });
+    //   observer.complete();
+    // });
+    let url = 'https://f5b5kufuchjdvdftptebdzdxtq0wuztu.lambda-url.us-east-1.on.aws?advisor_id=ADV-00004';
+    return this.http.get(url);
   }
 
   getContentByIds(ids: string[]): Observable<ContentItem[]> {

@@ -1,0 +1,23 @@
+<!-- Floating Icon Button -->
+<button class="chat-toggle-btn" (click)="toggleChat()">
+  💬
+</button>
+
+<!-- Chatbot Window -->
+<div class="chatbot-container" *ngIf="isChatOpen">
+  <div class="chat-window">
+    <div *ngFor="let msg of messages" [ngClass]="msg.sender">
+      <span>{{ msg.text }}</span>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div *ngIf="isLoading" class="bot loading">
+      <span>Typing...</span>
+    </div>
+  </div>
+
+  <form (ngSubmit)="sendMessage()" class="chat-form">
+    <input type="text" [(ngModel)]="userInput" name="message" [disabled]="isLoading" required />
+    <button type="submit" [disabled]="isLoading">Send</button>
+  </form>
+</div>
