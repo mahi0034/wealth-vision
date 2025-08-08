@@ -52,34 +52,35 @@ import { ContentItem } from '../../../models/content.model';
           </span>
         }
       </div>
-
-      <!-- Author and Actions -->
-      <div class="flex items-center justify-between pt-4 border-t border-gray-100">
-        <div class="flex items-center space-x-2">
-          <span class="text-xs text-gray-500">By</span>
-          <span class="text-xs font-medium text-gray-700">{{ content.author }}</span>
-        </div>
-        <div class="flex space-x-3">
-          <button 
-            (click)="share.emit(content.id)"
-            class="text-green-600 hover:text-green-800 text-sm font-medium flex items-center space-x-1 transition-colors">
-            <span>📤</span>
-            <span>Share</span>
-          </button>
-          <button 
-            (click)="feedback.emit(content.id)"
-            class="text-purple-600 hover:text-purple-800 text-sm font-medium flex items-center space-x-1 transition-colors">
-            <span>📝</span>
-            <span>Feedback</span>
-          </button>
-          <button 
-            (click)="details.emit(content.id)"
-            class="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center space-x-1 transition-colors">
-            <span>👁️</span>
-            <span>Details</span>
-          </button>
-        </div>
+      <div class="text-xs text-gray-500 mb-3">
+        <span class="text-xs text-gray-500">By</span>
+          <span class="text-xs font-medium text-gray-700">  {{ content.author }}</span>
+        
       </div>
+      <!-- Author and Actions -->
+      <div class="flex items-center justify-center w-full pt-4 border-t border-gray-100">
+  <div class="flex space-x-4">
+    <button 
+      (click)="share.emit(content.id)"
+      class="text-green-600 hover:text-green-800 text-sm font-medium flex items-center space-x-1 transition-colors">
+      <span>📤</span>
+      <span>Share</span>
+    </button>
+    <button 
+      (click)="feedback.emit(content.id)"
+      class="text-purple-600 hover:text-purple-800 text-sm font-medium flex items-center space-x-1 transition-colors">
+      <span>📝</span>
+      <span>Feedback</span>
+    </button>
+    <button 
+      (click)="details.emit(content.id)"
+      class="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center space-x-1 transition-colors">
+      <span>👁️</span>
+      <span>Details</span>
+    </button>
+  </div>
+</div>
+
 
       <!-- Metrics -->
       @if (content.metrics) {
